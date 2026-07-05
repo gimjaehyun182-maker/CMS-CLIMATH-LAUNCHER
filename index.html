@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CMS CLIMATH 대치 · 시스템 런처</title>
+<style>
+/* =====================================================================
+   🔧 여기만 고치세요 — 각 시스템의 URL을 채워 넣으면 됩니다.
+   url 을 "" 로 비워두면 카드가 '주소 미설정'으로 표시됩니다.
+   아래 스크립트의 SYSTEMS 배열에서 url 값만 바꾸면 끝!
+   ===================================================================== */
+:root{
+  --bg:#0d1117; --bg2:#0f1420;
+  --card:#161b26; --card-hover:#1c2432;
+  --border:#232b3a; --border-hover:#3a475e;
+  --text:#e6edf5; --muted:#8b98ac; --faint:#5b6675;
+  --c-blue:#5b8dff; --c-purple:#a374ff; --c-green:#3ecf8e;
+  --c-red:#ff6b6b; --c-yellow:#ffb443; --c-cyan:#3ec5d8;
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+  --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Pretendard','Malgun Gothic',-apple-system,'Segoe UI',sans-serif;
+  background:radial-gradient(1200px 600px at 50% -10%,var(--bg2),var(--bg));
+  color:var(--text); min-height:100vh;
+  display:flex; flex-direction:column; align-items:center;
+  padding:38px 20px 30px;
+}
+header{text-align:center; margin-bottom:22px}
+.kicker{letter-spacing:.32em; font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase}
+h1{font-size:clamp(28px,5vw,44px); font-weight:800; letter-spacing:.06em; margin:6px 0 10px}
+.sub{color:var(--muted); font-size:14px}
+kbd{
+  display:inline-block; padding:1px 7px; margin:0 2px;
+  background:#1b2434; border:1px solid var(--border-hover);
+  border-radius:6px; font-size:12px; color:var(--text);
+  box-shadow:0 2px 0 rgba(0,0,0,.4);
+}
+/* 검색 */
+.toolbar{width:100%; max-width:1000px; display:flex; gap:10px; margin:8px 0 20px}
+.search{
+  flex:1; display:flex; align-items:center; gap:9px;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:11px; padding:11px 15px; transition:border-color .15s;
+}
+.search:focus-within{border-color:var(--border-hover)}
+.search svg{flex:none; opacity:.6}
+.search input{
+  flex:1; background:none; border:none; outline:none;
+  color:var(--text); font-size:15px;
+}
+.search input::placeholder{color:var(--faint)}
+/* 그리드 */
+.grid{
+  width:100%; max-width:1000px;
+  display:grid; grid-template-columns:repeat(4,1fr); gap:16px;
+}
+.card{
+  position:relative; text-align:left; cursor:pointer;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:20px 18px 18px;
+  min-height:150px; overflow:hidden;
+  transition:transform .14s ease, border-color .14s, background .14s, box-shadow .14s;
+}
+.card::before{
+  content:""; position:absolute; left:0; top:0; bottom:0; width:4px;
+  background:var(--accent); border-radius:var(--radius) 0 0 var(--radius);
+}
+.card:hover{
+  transform:translateY(-4px); background:var(--card-hover);
+  border-color:var(--border-hover); box-shadow:var(--shadow);
+}
+.card:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.num{font-size:13px; font-weight:800; color:var(--accent); margin-bottom:14px; letter-spacing:.05em}
+.title{font-size:19px; font-weight:800; margin-bottom:9px}
+.desc{font-size:12.5px; color:var(--muted); line-height:1.55}
+/* 별(즐겨찾기) */
+.fav{
+  position:absolute; top:14px; right:13px; font-size:15px;
+  color:var(--faint); background:none; border:none; cursor:pointer;
+  opacity:0; transition:opacity .15s, color .15s;
+}
+.card:hover .fav, .fav.on{opacity:1}
+.fav.on{color:var(--c-yellow)}
+/* 미설정 배지 */
+.badge-unset{
+  position:absolute; bottom:14px; right:14px; font-size:10.5px;
+  color:var(--faint); border:1px dashed var(--border-hover);
+  padding:2px 7px; border-radius:20px;
+}
+.card.unset{opacity:.62}
+.card.hidden{display:none}
+/* 최근 사용 표시 */
+.recent-dot{
+  position:absolute; bottom:16px; left:18px;
+  font-size:10.5px; color:var(--faint);
+}
+footer{color:var(--faint); font-size:12.5px; text-align:center; margin-top:26px; line-height:1.7}
+footer b{color:var(--muted)}
+.empty{grid-column:1/-1; text-align:center; color:var(--faint); padding:40px 0}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="kicker">CMS CLIMATH 대치</div>
+  <h1>시스템 런처</h1>
+  <p class="sub">카드를 클릭하거나 숫자키를 누르면 해당 시스템이 새 탭으로 열립니다 · <kbd>/</kbd> 검색 · <kbd>F</kbd>+숫자 즐겨찾기</p>
+</header>
+
+<div class="toolbar">
+  <label class="search">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input id="q" type="text" placeholder="시스템 검색 (이름 · 설명 · 숫자)" autocomplete="off">
+  </label>
+</div>
+
+<main class="grid" id="grid"></main>
+
+<footer>
+  이 파일을 <b>바탕화면</b>에 두고 더블클릭하면 됩니다 · 즐겨찾기와 최근 사용은 이 브라우저에 자동 저장됩니다<br>
+  URL 수정: 파일을 편집기로 열어 상단 <b>SYSTEMS</b> 배열의 <b>url</b> 값만 바꾸세요
+</footer>
+
+<script>
+/* ================== 🔧 시스템 추가/수정 영역 ==================
+   카드를 추가하려면 아래 배열에 한 줄 복사해서 붙여넣고
+   title(이름) · desc(설명) · url(주소) 만 바꾸면 됩니다.
+   accent 색상: --c-blue / --c-purple / --c-green / --c-red /
+                --c-yellow / --c-cyan  중 골라 쓰세요.
+   ── 새 카드 예시 (복사해서 쓰세요) ──
+   { title:"새 시스템", desc:"설명을 적으세요", accent:"var(--c-purple)", url:"https://..." },
+   ============================================================= */
+const SYSTEMS = [
+  { title:"강의실 배치",   desc:"건물 · 층 · 요일별 강의실 배치",       accent:"var(--c-blue)",   url:"https://cms-room.vercel.app" },
+  { title:"올케어 ACS",   desc:"학생 시간표 · 학습분석 · 학부모 피드백", accent:"var(--c-green)",  url:"https://cms-climath-allcare.vercel.app" },
+  { title:"KJMO 운영센터", desc:"한국주니어수학올림피아드 운영",        accent:"var(--c-cyan)",   url:"https://kjmo-web.vercel.app" },
+  { title:"GS TOP 챌린지", desc:"GS TOP 매일 심화 챌린지",             accent:"var(--c-yellow)", url:"https://daily-challenge-nu-two.vercel.app/" },
+];
+/* =========================================================== */
+
+const LS = { fav:"launcher_fav", recent:"launcher_recent" };
+const load = (k)=>{ try{return JSON.parse(localStorage.getItem(k))||{}}catch(e){return {}} };
+const save = (k,v)=>localStorage.setItem(k,JSON.stringify(v));
+let favs = load(LS.fav);
+let recent = load(LS.recent);
+
+const grid = document.getElementById("grid");
+const qBox = document.getElementById("q");
+
+function fmtRecent(ts){
+  if(!ts) return "";
+  const d = Math.floor((Date.now()-ts)/86400000);
+  if(d===0) return "오늘 사용";
+  if(d===1) return "어제 사용";
+  return d+"일 전 사용";
+}
+
+function open(i){
+  const s = SYSTEMS[i];
+  if(!s.url){ alert(`'${s.title}' 주소가 아직 설정되지 않았어요.\n파일을 편집기로 열어 SYSTEMS 배열의 url 값을 채워주세요.`); return; }
+  recent[i] = Date.now(); save(LS.recent, recent);
+  window.open(s.url, "_blank");
+  render();
+}
+
+function toggleFav(i){
+  favs[i] = !favs[i]; save(LS.fav, favs); render();
+}
+
+function render(){
+  grid.innerHTML = "";
+  SYSTEMS.forEach((s,i)=>{
+    const card = document.createElement("button");
+    card.className = "card" + (s.url? "" : " unset");
+    card.style.setProperty("--accent", s.accent);
+    card.dataset.i = i;
+    card.dataset.search = (s.title+" "+s.desc+" "+(i+1)).toLowerCase();
+    card.onclick = ()=>open(i);
+    card.innerHTML = `
+      <div class="num">${String(i+1).padStart(2,"0")}</div>
+      <div class="title">${s.title}</div>
+      <div class="desc">${s.desc}</div>
+      <span class="fav ${favs[i]?"on":""}" title="즐겨찾기">★</span>
+      ${s.url? "" : '<span class="badge-unset">주소 미설정</span>'}
+      ${recent[i]? `<span class="recent-dot">${fmtRecent(recent[i])}</span>`:""}
+    `;
+    card.querySelector(".fav").onclick = (e)=>{ e.stopPropagation(); toggleFav(i); };
+    grid.appendChild(card);
+  });
+  filter();
+}
+
+function filter(){
+  const q = qBox.value.trim().toLowerCase();
+  let shown = 0;
+  grid.querySelectorAll(".card").forEach(c=>{
+    const hit = !q || c.dataset.search.includes(q);
+    c.classList.toggle("hidden", !hit);
+    if(hit) shown++;
+  });
+  const old = grid.querySelector(".empty"); if(old) old.remove();
+  if(shown===0){
+    const e = document.createElement("div");
+    e.className="empty"; e.textContent="검색 결과가 없습니다.";
+    grid.appendChild(e);
+  }
+}
+
+qBox.addEventListener("input", filter);
+
+// 키보드: 1~9 실행, / 검색 포커스, F+숫자 즐겨찾기 토글
+let favMode = false;
+document.addEventListener("keydown",(e)=>{
+  if(document.activeElement===qBox){
+    if(e.key==="Escape"){ qBox.value=""; filter(); qBox.blur(); }
+    return;
+  }
+  if(e.key==="/"){ e.preventDefault(); qBox.focus(); return; }
+  if(e.key==="f"||e.key==="F"){ favMode=true; setTimeout(()=>favMode=false,900); return; }
+  if(/^[1-9]$/.test(e.key)){
+    const i = +e.key-1;
+    if(i >= SYSTEMS.length) return;
+    if(favMode){ toggleFav(i); favMode=false;
